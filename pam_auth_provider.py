@@ -14,7 +14,6 @@
 # limitations under the Licence.
 
 import pam
-import pwd
 
 from collections import namedtuple
 from twisted.internet import defer
@@ -36,12 +35,6 @@ class PAMAuthProvider:
             defer.returnValue(False)
         # user_id is of the form @foo:bar.com
         localpart = user_id.split(":", 1)[0][1:]
-
-        # check whether user even exists
-        try:
-            pwd.getpwnam(localpart)
-        except KeyError:
-            defer.returnValue(False)
 
         # Now check the password
         if not pam.pam().authenticate(localpart, password, service='matrix-synapse'):
