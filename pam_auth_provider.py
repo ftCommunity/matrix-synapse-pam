@@ -17,6 +17,7 @@ import pam
 
 from collections import namedtuple
 from twisted.internet import defer
+from synapse import types
 
 class PAMAuthProvider:
     def __init__(self, config, account_handler):
@@ -36,17 +37,25 @@ class PAMAuthProvider:
         # user_id is of the form @foo:bar.com
         localpart = user_id.split(":", 1)[0][1:]
 
+        # check if localpart is a valid mxid.
+        # If not, bail out without even checking PAM because
+        # we can't create a user with that id anyway.
+        if types.contains_invalid_mxid_characters(localpart):
+            defer.returnValue(None)
+
         # Now check the password
         if not pam.pam().authenticate(localpart, password, service='matrix-synapse'):
             defer.returnValue(None)
 
         # From here on, the user is authenticated
+        if (yield self.account_handler.check_user_exists(user_id)):
+            defer.returnValue(user_id)
 
-        user_id = yield self.account_handler.check_user_exists(user_id)
-        if (not user_id) and self.create_users:
-            user_id = yield self.account_handler.register(localpart=localpart)
+        if self.create_users:
+            user_id = yield self.account_handler.register_user(localpart=localpart)
+            defer.returnValue(user_id)
 
-        defer.returnValue(user_id)
+        defer.returnValue(None)
 
     @staticmethod
     def parse_config(config):
