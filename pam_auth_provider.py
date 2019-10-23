@@ -32,25 +32,21 @@ class PAMAuthProvider:
                 True if authentication against PAM was successful
         """
         if not password:
-            defer.returnValue(False)
+            defer.returnValue(None)
         # user_id is of the form @foo:bar.com
         localpart = user_id.split(":", 1)[0][1:]
 
         # Now check the password
         if not pam.pam().authenticate(localpart, password, service='matrix-synapse'):
-            defer.returnValue(False)
+            defer.returnValue(None)
 
         # From here on, the user is authenticated
 
-        # Bail if we don't want to create users in Matrix
-        if not self.create_users:
-            defer.returnValue(False)
+        user_id = yield self.account_handler.check_user_exists(user_id)
+        if (not user_id) and self.create_users:
+            user_id = yield self.account_handler.register(localpart=localpart)
 
-        # Create the user in Matrix if it doesn't exist yet
-        if not (yield self.account_handler.check_user_exists(user_id)):
-            yield self.account_handler.register(localpart=localpart)
-
-        defer.returnValue(True)
+        defer.returnValue(user_id)
 
     @staticmethod
     def parse_config(config):
