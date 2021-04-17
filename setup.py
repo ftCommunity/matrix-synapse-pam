@@ -19,10 +19,9 @@ from setuptools import setup
 
 setup(
         name="matrix-synapse-pam",
-        version="0.1.2",
+        version="0.1.3",
         py_modules=['pam_auth_provider'],
         install_requires=[
-            "Twisted>=8.0.0",
             "python-pam"
         ],
 
